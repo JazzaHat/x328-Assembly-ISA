@@ -1,0 +1,254 @@
+x328 CPU and Chipset
+//
+//Jazza_Hat
+//
+//Hardware Specifications//
+Word size in bits:		32
+ISA size in bits:		32
+Endianess:				Big
+RAM Support:			2^32 Bytes (current implementation is 26 bit or 64MB)
+RAM Addressing size:	Bytes
+I/O Method:				Memory Mapped
+Expansion Memory:		256KB (upto 16KB each)		
+Expansion Slots:		16
+Interupt Support:		Yes
+Interupt Priority:		32 Levels
+Unique Interupts:		256
+Interupt Table:			256 * 5 Bytes (1.25KB)
+//END//
+//
+//Data type bit widths:
+	Byte:		8
+	Double:		16
+	Word:		32
+	Immediate:	Variable
+	Pointer:	6
+//END//
+//
+//Instruction Set Architecture//
+//0000 0000 .. 0000 0000 .. 0000 0000 .. 0000 0000
+//
+//Data Transfer
+	0TTT TAAA .. AAAB BBBB .. BBBB BBBB .. BBBB BBBB
+	T - Type of transfer
+		//TTT-> Permutations
+		0000	Register -> Address (6  bit, 21 bit) 	BYTE
+		0001	Address -> Register (21 bit, 6  bit)	BYTE
+		0010	Pointer -> Register (6  bit, 6  bit)	BYTE
+		0011	Immediate -> Address (6 bit, 21 bit)	BYTE
+
+		0100	Register -> Address (6  bit, 21 bit) 	DBLE
+		0101	Address -> Register (21 bit, 6  bit)	DBLE
+		0110	Pointer -> Register (6  bit, 6  bit)	DBLE
+		0111	Immediate -> Address (6 bit, 21 bit)	DBLE
+
+		1000	Register -> Address (6  bit, 21 bit) 	WORD
+		1001	Address -> Register (21 bit, 6  bit)	WORD
+		1010	Pointer -> Register (6  bit, 6  bit)	WORD
+		1011	Immediate -> Address (6 bit, 21 bit)	WORD
+		1100	Immediate -> Register (21 bit, 6 bit)	WORD
+
+		1101	
+		1110
+		1111
+		//
+	A - Register/Immediate
+	B - Address/Immediate/Pointer
+//
+//Other Operations
+	1OOO 0000 .. 0000 0000 .. 0000 0000 .. 0000 0000
+	OOO - Operations
+		//OOO-> Permutations
+		000		NOP
+		001		EXE
+						1001 OOOO .. OIAA AAAA .. AAAJ BBBB .. BBCC CCCC
+						O - Operation
+						I - Use A as Immediate
+						A - A Data
+						J - Use B as Immediate
+						B - B Data
+						C - C Data
+						(Some operations may use A, J and B as Immediate)
+		//
+		010		CONV
+						1010 OOOI .. AAAA AAAA .. AAAA AAAA .. AACC CCCC
+						O - Operation
+						I - Use A as Immediate
+						A - A Data
+						C - C Data
+		011		JMP
+						1011 OOOO .. 0000 0000 .. 0000 0000 .. 0000 0000
+						O - Operation
+							0 	-	1011 OOOO .. IIII IIII .. IIII IIII .. IIII IIII
+										I - Immediate
+							1,2 -	1011 OOOO .. AAAA AA00 .. 0000 0000 .. 0000 0000
+										A - A Data
+							3-8 -	1011 OOOO .. AAAA AABB .. BBBB IIII .. IIII IIII
+										A - A Data
+										B - B Data
+										I - Immediate
+		100		JMPF
+						1100 OOOO .. IIII IIII .. IIII IIII .. IIII IIII
+							I - Immediate
+						1100 1011 .. FFFF FF00 .. 0000 0000 .. 0000 0000 - CFLG
+							F - Flag to clear
+		101		MEM
+						1101 00RM .. MMMM MMMM .. MMMM MMMM .. MMMM MMMM - MEMB
+							R - Register or Immediate
+							M - Memory Offset
+						1101 01AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000 - MEML
+						1101 10AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000 - MEMU
+							A - A Data
+							I - Use B as Immediate
+							B - B Data
+		110		IRQ
+						1110 01 AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000
+		111		LOOP
+						1111 AAAA .. AACC CIBB .. BBBB XXXX .. XXXX ZZZZ
+							A - A Data
+							C - Condition
+							I - Use B as Immediate
+							X - Jump Offset
+							Z - Modify A Offset
+		//
+	//
+//
+//
+//Instructions
+//
+
+NOP //No Operation
+
+//Memory Access
+	BYTE [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 8 bit Byte
+	DBLE [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 16 bit Double
+	WORD [From:	Register/Address/Immediate/Pointer/PC] 	[To: Register/Address/Pointer]	//Copy 32 bit Word
+
+	PUSH [From:	Register/Immediate/Pointer]												//Push  to Stack
+	POP  [To:	Register]																//Pop top value from Stack to Register
+	PEEK [To:	Register]																//Peek top value from Stak to Register
+//
+//EXE Operations 0-31
+	OR   [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical OR
+	NOR  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical NOR
+	AND  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical AND
+	NAND [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical NAND
+	XOR  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical XOR
+	XNOR [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical XNOR
+
+	ADD  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Adition
+	SUB  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Subtraction
+	MUL  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Multiplication
+	DIV  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Division
+	MOD  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Modulus
+	NEG  [A: Register/Immediate]							[C:	Register]			//Negative (2s Compliment)
+	ABS  [A: Register/Immediate]							[C:	Register]			//Absolute 
+
+	FADD [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Fixed Point Adition
+	FSUB [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Fixed Point Subtraction
+	FMUL [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Fixed Point Multiplication
+	FDIV [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Fixed Point Division
+	FSQT [A: Register/Immediate]							[C:	Register]			//Fixed Point Square Root
+	FNEG [A: Register/Immediate]							[C:	Register]			//Fixed Point Negative
+	FABS [A: Register/Immediate]							[C:	Register]			//Fixed Point Absolute
+
+	LLSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical Left Shift
+	LRSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical Right Shift
+	ARSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Arithmatic Right Shift
+	RLSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Rotate Left Shift
+	RRSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Rotate Right Shift
+
+	ENDN [A: Register]										[C:	Register]			//Swap Endianess (System still computes in Big Endian, but allows sending of data to Little Endian Systems)
+	NBIT [A: Register]										[C:	Register]			//Number of 1 bits
+	HIG0 [A: Register]										[C:	Register]			//Position of Highest 0 bit
+	HIG1 [A: Register]										[C:	Register]			//Position of Highest 1 bit
+	LOW0 [A: Register]										[C:	Register]			//Position of Lowest 0 bit
+	LOW1 [A: Register/Immediate]							[C:	Register]			//Position of Lowest 1 bit
+
+	RAND 													[C: Register]			//Random 32 bit Word
+//
+//CONV Operations 0-7
+	INTF [A: Register/Immediate]							[C:	Register]			//Integer to Fixed Point
+	FINT [A: Register/Immediate]							[C:	Register]			//Fixed Point to Integer
+	INAS [A: Register/Immediate]							[C:	Register]			//Integer to ASCII
+	ASIN [A: Register/Immediate]							[C:	Register]			//ASCII to Integer
+	INAL [A: Register/Immediate]							[C:	Register]			//Integer to ASCII Alphabet (Integer 1 = ASCII A...)
+	ALIN [A: Register/Immediate]							[C:	Register]			//ASCII Alphabet to Integer (^)
+
+	SIN  [A: Register/Immediate]							[C:	Register]			//Sine value (Degrees) (Uses Fixed point)
+	COS  [A: Register/Immediate]							[C:	Register]			//Cosine Value (Degrees) (Uses Fixed point)
+//
+//JMP Operations 0-8
+	JMP  [Relative Jump: Register/Immediate]										//Relative Jump with Immediate
+	JMPA [Absolute Jump: Register/Immediate]										//Absolute Jump with Register
+
+	JE   [A: Register]	[B:	Register/Immediate] [Jump: Immediate]					//Relative Jump when A == B
+	JNE  [A: Register]	[B:	Register/Immediate] [Jump: Immediate]					//Relative Jump when A != B
+	JG   [A: Register]	[B:	Register/Immediate] [Jump: Immediate]					//Relative Jump when A > B
+	JGE  [A: Register]	[B:	Register/Immediate] [Jump: Immediate]					//Relative Jump when A >= B
+	JL   [A: Register]	[B:	Register/Immediate] [Jump: Immediate]					//Relative Jump when A < B
+	JLE  [A: Register]	[B:	Register/Immediate] [Jump: Immediate]					//Relative Jump when A <= B
+//
+//JMPF
+	JAO  [Jump: Immediate]															//Relative Jump when Arithmatic Overflow
+	JANO [Jump: Immediate]															//Relative Jump when not Arithmatic Overflow
+	JAU  [Jump: Immediate]															//Relative Jump when Arithmatic Underflow
+	JANU [Jump: Immediate]															//Relative Jump when not Arithmatic Underflow
+	JSO  [Jump: Immediate]															//Relative Jump when Stack Overflow
+	JSNO [Jump: Immediate]															//Relative Jump when not stack Overflow
+	JSU  [Jump: Immediate]															//Relative Jump when Stack Underflow
+	JSNU [Jump: Immediate]															//Relative Jump when not Stack Underflow
+	JNEG [Jump: Immediate]															//Relative Jump when a FSQT happens on a negative number
+	JDIV [Jump: Immediate]															//Relative Jump when a Division by 0 happens
+	JRND [Jump: Immediate]															//Relative Jump Randomly (50/50)
+
+	CFLG [Flags to clear: AO AU SO SU NEG DIV]										//Clear Flags manually (Flags are reset anyway when you successfully Jump)
+//
+//MEM
+	MEMB [Address Offset: Register/Immediate]										//Base offset for memory access
+	MCPL [Lower Address to copy to: Register] [Port: Register/Immediate]			//Memory Copy Lower Address
+	MCPU [Lower Address to copy to: Register] [Port: Register/Immediate]			//Memory Copy Upper Address -Operation doent start til Upper address is given -Values get reset on success
+//
+//IRQ
+	IRH  [Interupt: Register/Immediate] [Address/Data: 	Register/Immediate]			//Interupt Handler: set Interupt Address
+	IRE  [Interupt: Register/Immediate] [Expansion: 	Register/Immediate]			//Which Expansion The Interupt is sent to
+	IPL  [Interupt: Register/Immediate] [Priority: 		Register/Immediate]			//Interupt Priority Level: sets Interupt to the Priority Level
+	IRQS [Interupt: Register/Immediate] 											//Software Interupt
+	IRQM [Priority: Register/Immediate] 											//Masks Interupts less than this Priority
+	
+//IPL 8, 8, 5 (bits)
+//
+//LOOP
+	LOOP [A: Register] [Condition] [B: Register/Immediate] [Relative Jump: Immediate] [Modify A: Immediate]
+	//Loops back with a Relative Jump when condition met, modifies A when constant is given
+//END//
+
+
+//Boot process
+	Start Processor
+	Initiate Devices
+	Attempt to read instruction 000000 from RAM
+	Northbridge will intercept with BIOS code
+	Execute BIOS
+	Find boot order inside -BootTable
+	Copy Initial Program over (May be boot loader)
+
+//End
+
+
+//IRQ
+	IRQ from device
+	Wait for instruction to finish
+	Northbridge Pause PC
+		Insert Instruction to send PC to stack
+	Lookup Interupt table
+	Fetch Address
+	//Execute interupt
+	Pop all data data used from stack
+	Pop PC and JMPI to new PC
+//End
+
+//Devices have x Bytes split between them
+//At startup they ask to get as much RAM as they can
+//If they do not get enough then an interupt is made
+//Devices will still work until they try to access invalid memory and then another interupt is made
