@@ -1,3 +1,5 @@
+--Problem Loading Negative Fixed point values. May have to Dedicate 1 bit in the Immediate itself ugh
+
 x328 CPU and Chipset
 //
 //Jazza_Hat
@@ -17,43 +19,109 @@ Unique Interupts:		256
 Interupt Table:			256 * 5 Bytes (1.25KB)
 //END//
 //
-//Data type bit widths:
+//Internal Data type bit widths:
 	Byte:		8
 	Double:		16
 	Word:		32
 	Immediate:	Variable
 	Pointer:	6
 //END//
+//Compiler Data type bit widths:		//Not nessasarilly the data itself, but the container of the Data
+	Register:	6
+	Immediate:	Variable
+	Label:		64 Characters
+	Address:	21
+	Pointer:	6
+	PC:			
+//END//
+//
+//Immediates
+	Immediates can be signed Integers or signed Fixed point values
+	For example, in a 21 bit Immediate, the compiler will turn:
+	 69  	into 0 0000 0000 0100 0101 and when this is loaded into a Word in the register 0000 0000 0000 0000 0000 0000 0100 0101
+	-69  	into 1 1111 1111 1011 1011 and when this is loaded into a Word in the register 1111 1111 1111 1111 1111 1111 1011 1011
+	 69.69f into 0 0100 0101 1011 0001 and when this is loaded into a Word in the register 0000 0000 0000 0000 0100 0101 1011 0001
+	-69.69f into 1 ? Add support for negative fixed point values?
 //
 //Instruction Set Architecture//
-//0000 0000 .. 0000 0000 .. 0000 0000 .. 0000 0000
+	//32 bit
+	//0000 0000 .. 0000 0000 .. 0000 0000 .. 0000 0000
 //
-//Data Transfer
+//NOP //0000 0000 0000 0000 0000 0000 0000 0000 --No Operation
+//
+//Memory Access
+	BYTE [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 8 bit Byte
+	DBLE [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 16 bit Double
+	WORD [From:	Register/Address/Immediate/Pointer/PC] 	[To: Register/Address/Pointer]	//Copy 32 bit Word
+
+	PUSH [From:	Register/Immediate/Pointer/PC]											//Push  to Stack
+	POP  [To:	Register]																//Pop top value from Stack to Register
+	PEEK [To:	Register]																//Peek top value from Stak to Register
+	--[[
+		The compiler will auto detect what you are trying to make the CPU do.
+		Some combinations are not possible due to them being impractical.
+		For a list of possible commands and their respective machine code,
+		see below.
+	]]--
+	//
 	0TTT TAAA .. AAAB BBBB .. BBBB BBBB .. BBBB BBBB
 	T - Type of transfer
-		//TTT-> Permutations
-		0000	Register -> Address (6  bit, 21 bit) 	BYTE
-		0001	Address -> Register (21 bit, 6  bit)	BYTE
-		0010	Pointer -> Register (6  bit, 6  bit)	BYTE
-		0011	Immediate -> Address (6 bit, 21 bit)	BYTE
-
-		0100	Register -> Address (6  bit, 21 bit) 	DBLE
-		0101	Address -> Register (21 bit, 6  bit)	DBLE
-		0110	Pointer -> Register (6  bit, 6  bit)	DBLE
-		0111	Immediate -> Address (6 bit, 21 bit)	DBLE
-
-		1000	Register -> Address (6  bit, 21 bit) 	WORD
-		1001	Address -> Register (21 bit, 6  bit)	WORD
-		1010	Pointer -> Register (6  bit, 6  bit)	WORD
-		1011	Immediate -> Address (6 bit, 21 bit)	WORD
-		1100	Immediate -> Register (21 bit, 6 bit)	WORD
-
-		1101	
-		1110
-		1111
-		//
 	A - Register/Immediate
 	B - Address/Immediate/Pointer
+		//TTTT-> Permutations
+		0000	Register	A 	-> B 	Address  (6  bit, 21 bit) 	BYTE 				//0000 0AAA AAAB BBBB BBBB BBBB --Saves Byte from Register A to Address B
+																	BYTE $24 $128		//0000 0011 0000 0000 1000 0000
+
+		0001	Address 	B 	-> A 	Register (21 bit, 6  bit)	BYTE 				//0000 1AAA AAAB BBBB BBBB BBBB --Saves Byte from Address B to Register A
+																	BYTE %128 $24		//0000 1011 0000 0000 1000 0000
+
+		0010	Pointer 	A 	-> B 	Register (6  bit, 6  bit)	BYTE 				//0001 0AAA AAA0 0000 00BB BBBB --Saves Byte from Pointer A to Register B
+																	BYTE ^6 $24			//0001 0000 1100 0000 0001 1000
+		//--------------------------------------------------------------------------------------------------------------------------------
+		//
+		0011	Register 	A 	-> B 	Address  (6  bit, 21 bit) 	DBLE 				//0001 1AAA AAAB BBBB BBBB BBBB --Saves Double from Register A to Address B
+																	DBLE $24 $128		//0001 1011 0000 0000 1000 0000
+
+		0100	Address 	B 	-> A 	Register (21 bit, 6  bit)	DBLE 				//0010 0AAA AAAB BBBB BBBB BBBB --Saves Double from Address B to Register A
+																	DBLE %128 $24		//0010 0011 0000 0000 1000 0000
+
+		0101	Pointer 	A 	-> B 	Register (6  bit, 6  bit)	DBLE 				//0010 1AAA AAA0 0000 00BB BBBB --Saves Double from Pointer A to Register B
+																	DBLE ^6 $24			//0010 1000 1100 0000 0001 1000
+		//--------------------------------------------------------------------------------------------------------------------------------
+		//
+		0110	Register 	A 	-> B 	Address  (6  bit, 21 bit) 	WORD 				//0011 0AAA AAAB BBBB BBBB BBBB --Saves Word from Register A to Address B
+																	WORD $24 $128		//0011 0011 0000 0000 1000 0000
+
+		0111	Address 	B 	-> A 	Register (21 bit, 6  bit)	WORD 				//0011 1AAA AAAB BBBB BBBB BBBB --Saves Word from Address B to Register A
+																	WORD %128 $24		//0011 1011 0000 0000 1000 0000
+
+		1000	Pointer 	A 	-> B 	Register (6  bit, 6  bit)	WORD 				//0100 0AAA AAA0 0000 00BB BBBB --Saves Word from Pointer A to Register B
+																	WORD ^6 $24			//0100 0000 1100 0000 0001 1000
+
+		1001	Immediate 	B 	-> A 	Register (21 bit, 6  bit)	WORD 				//0100 1AAA AAAB BBBB BBBB BBBB --Saves 21 bits B to Register A
+																	WORD 69 $24			//0100 1011 0000 0000 0100 0101
+		//--------------------------------------------------------------------------------------------------------------------------------
+		//
+		1010	Register 	A 	-> 		Stack 	 (6  Bit)			PUSH  				//0101 0AAA AAA0 0000 0000 0000 --Pushes Register A to Stack
+																	PUSH $24			//0101 0011 0000 0000 0000 0000
+
+		1011	Immediate 	A+B -> 		Stack    (27 bit)			PUSH				//0101 1AAA AAAB BBBB BBBB BBBB --Pushes 21 bit Immediate [AAA AAAB BBBB BBBB BBBB] to Stack
+																	PUSH 69
+
+		1100	Pointer 	A 	-> 		Stack    (6  bit)			PUSH 				//0110 0AAA AAA0 0000 0000 0000 --Pushes Pointer A to Stack
+																	PUSH
+
+		1101	PC 			PC	-> 		Stack 						PUSH 				//0110 1000 0000 0000 0000 0000 --Pushes PC to Stack
+																	PUSH
+
+		1110	Stack 	 		-> A	Register (6  bit)			POP 				//0111 0AAA AAA0 0000 0000 0000 --Pushes top value in Stack to Register A
+																	POP
+
+		1111	Stack 			-> A	Register (6  bit)			PEEK 	 			//0111 1AAA AAA0 0000 0000 0000 --Peeks top value in Stack to Register A
+																	PEEK
+		//
+	//
+//
 //
 //Other Operations
 	1OOO 0000 .. 0000 0000 .. 0000 0000 .. 0000 0000
@@ -117,17 +185,6 @@ Interupt Table:			256 * 5 Bytes (1.25KB)
 //Instructions
 //
 
-NOP //No Operation
-
-//Memory Access
-	BYTE [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 8 bit Byte
-	DBLE [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 16 bit Double
-	WORD [From:	Register/Address/Immediate/Pointer/PC] 	[To: Register/Address/Pointer]	//Copy 32 bit Word
-
-	PUSH [From:	Register/Immediate/Pointer]												//Push  to Stack
-	POP  [To:	Register]																//Pop top value from Stack to Register
-	PEEK [To:	Register]																//Peek top value from Stak to Register
-//
 //EXE Operations 0-31
 	OR   [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical OR
 	NOR  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical NOR
