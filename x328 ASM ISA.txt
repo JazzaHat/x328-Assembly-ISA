@@ -1,17 +1,15 @@
---Problem Loading Negative Fixed point values. May have to Dedicate 1 bit in the Immediate itself ugh
-
 x328 CPU and Chipset
 //
-//Jazza_Hat
+//Jazza_Hat & Nevercast
 //
 //Hardware Specifications//
-Word size in bits:		32
+QBYT size in bits:		32
 ISA size in bits:		32
 Endianess:				Big
 RAM Support:			2^32 Bytes (current implementation is 26 bit or 64MB)
 RAM Addressing size:	Bytes
 I/O Method:				Memory Mapped
-Expansion Memory:		256KB (upto 16KB each)		
+Expansion Memory:		256KB
 Expansion Slots:		16
 Interupt Support:		Yes
 Interupt Priority:		32 Levels
@@ -20,39 +18,48 @@ Interupt Table:			256 * 5 Bytes (1.25KB)
 //END//
 //
 //Internal Data type bit widths:
-	Byte:		8
-	Double:		16
-	Word:		32
+	BYTE:		8
+	DBYT:		16
+	QBYT:		32
 	Immediate:	Variable
 	Pointer:	6
 //END//
 //Compiler Data type bit widths:		//Not nessasarilly the data itself, but the container of the Data
 	Register:	6
 	Immediate:	Variable
-	Label:		64 Characters
+		Base 10
+		Base 2
+		Base 16
+		ASCII 	--Upto 4 characters, will be truncated if needed.
+	Label:		Variable
 	Address:	21
 	Pointer:	6
 	PC:			
 //END//
 //
 //Immediates
-	Immediates can be signed Integers or signed Fixed point values
+	Immediates can be signed Base 10 Integers or positive Fixed point values or signed Base 2 Integers or Base 16 or select ASCII characters.
 	For example, in a 21 bit Immediate, the compiler will turn:
-	 69  	into 0 0000 0000 0100 0101 and when this is loaded into a Word in the register 0000 0000 0000 0000 0000 0000 0100 0101
-	-69  	into 1 1111 1111 1011 1011 and when this is loaded into a Word in the register 1111 1111 1111 1111 1111 1111 1011 1011
-	 69.69f into 0 0100 0101 1011 0001 and when this is loaded into a Word in the register 0000 0000 0000 0000 0100 0101 1011 0001
-	-69.69f into 1 ? Add support for negative fixed point values?
+	 69  						into 0 0000 0000 0100 0101 and when this is loaded into a QBYT in the register 0000 0000 0000 0000 0000 0000 0100 0101
+	-69  						into 1 1111 1111 1011 1011 and when this is loaded into a QBYT in the register 1111 1111 1111 1111 1111 1111 1011 1011
+	 69.69f 					into 0 0100 0101 1011 0001 and when this is loaded into a QBYT in the register 0000 0000 0000 0000 0100 0101 1011 0001
+	 0b0 0000 0000 0100 0101 	into 0 0000 0000 0100 0101 and when this is loaded into a QBYT in the register 0000 0000 0000 0000 0000 0000 0100 0101
+	-0b0 0000 0000 0100 0101 	into 1 1111 1111 1011 1011 and when this is loaded into a QBYT in the register 1111 1111 1111 1111 1111 1111 1011 1011
+	 0x45 						into 0 0000 0000 0100 0101 and when this is loaded into a QBYT in the register 0000 0000 0000 0000 0000 0000 0100 0101
+	--Note that Binary and Hexadecimal Values will be truncated (in this example) to 21 bits. If there is a negative sign infront of it, the MSB will be set to 1 (if it is not already).
+	 "ab"						into 0 0110 0001 0110 0010 and when this is loaded into a QBYT in the register 0000 0000 0000 0000 0110 0001 0110 0002
+	 "a"						into 0 0000 0000 0110 0001 and when this is loaded into a QBYT in the register 0000 0000 0000 0000 0000 0000 0110 0001
 //
 //Instruction Set Architecture//
 	//32 bit
 	//0000 0000 .. 0000 0000 .. 0000 0000 .. 0000 0000
 //
-//NOP //0000 0000 0000 0000 0000 0000 0000 0000 --No Operation
+//NOP //1000 0000 0000 0000 0000 0000 0000 0000 --No Operation
 //
 //Memory Access
 	BYTE [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 8 bit Byte
-	DBLE [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 16 bit Double
-	WORD [From:	Register/Address/Immediate/Pointer/PC] 	[To: Register/Address/Pointer]	//Copy 32 bit Word
+	DBYT [From:	Register/Address/Immediate/Pointer]		[To: Register/Address/Pointer]	//Copy 16 bit DBYT
+	QBYT [From:	Register/Address/Immediate/Pointer/PC] 	[To: Register/Address/Pointer]	//Copy 32 bit QBYT
 
 	PUSH [From:	Register/Immediate/Pointer/PC]											//Push  to Stack
 	POP  [To:	Register]																//Pop top value from Stack to Register
@@ -69,160 +76,184 @@ Interupt Table:			256 * 5 Bytes (1.25KB)
 	A - Register/Immediate
 	B - Address/Immediate/Pointer
 		//TTTT-> Permutations
-		0000	Register	A 	-> B 	Address  (6  bit, 21 bit) 	BYTE 				//0000 0AAA AAAB BBBB BBBB BBBB --Saves Byte from Register A to Address B
-																	BYTE $24 $128		//0000 0011 0000 0000 1000 0000
+		0000 Register	A 	-> B 	Address  (6  bit, 21 bit) 	BYTE 				//0000 0AAA AAAB BBBB BBBB BBBB BBBB BBBB --Saves Byte from Register A to Address B
+																BYTE $24 %128		//0000 0011 0000 0000 0000 0000 1000 0000 --Saves Byte from Register 24 to Address 128
 
-		0001	Address 	B 	-> A 	Register (21 bit, 6  bit)	BYTE 				//0000 1AAA AAAB BBBB BBBB BBBB --Saves Byte from Address B to Register A
-																	BYTE %128 $24		//0000 1011 0000 0000 1000 0000
+		0001 Address 	B 	-> A 	Register (21 bit, 6  bit)	BYTE 				//0000 1AAA AAAB BBBB BBBB BBBB BBBB BBBB --Saves Byte from Address B to Register A
+																BYTE %128 $24		//0000 1011 0000 0000 0000 0000 1000 0000 --Saves Byte from Address 128 to Register 24
 
-		0010	Pointer 	A 	-> B 	Register (6  bit, 6  bit)	BYTE 				//0001 0AAA AAA0 0000 00BB BBBB --Saves Byte from Pointer A to Register B
-																	BYTE ^6 $24			//0001 0000 1100 0000 0001 1000
+		0010 Pointer 	A 	-> B 	Register (6  bit, 6  bit)	BYTE 				//0001 0AAA AAA0 0000 0000 0000 00BB BBBB --Saves Byte from Pointer A to Register B
+																BYTE ^6 $24			//0001 0000 1100 0000 0000 0000 0001 1000 --Saves Byte from Pointer 6 to Register 24
 		//--------------------------------------------------------------------------------------------------------------------------------
 		//
-		0011	Register 	A 	-> B 	Address  (6  bit, 21 bit) 	DBLE 				//0001 1AAA AAAB BBBB BBBB BBBB --Saves Double from Register A to Address B
-																	DBLE $24 $128		//0001 1011 0000 0000 1000 0000
+		0011 Register 	A 	-> B 	Address  (6  bit, 21 bit) 	DBYT 				//0001 1AAA AAAB BBBB BBBB BBBB BBBB BBBB --Saves DBYT from Register A to Address B
+																DBYT $24 $128		//0001 1011 0000 0000 0000 0000 1000 0000 --Saves DBYT from Register 24 to Address 128
+		0100 Address 	B 	-> A 	Register (21 bit, 6  bit)	DBYT 				//0010 0AAA AAAB BBBB BBBB BBBB BBBB BBBB --Saves DBYT from Address B to Register A
+																DBYT %128 $24		//0010 0011 0000 0000 0000 0000 1000 0000 --Saves DBYT from Address 128 to Register 24
 
-		0100	Address 	B 	-> A 	Register (21 bit, 6  bit)	DBLE 				//0010 0AAA AAAB BBBB BBBB BBBB --Saves Double from Address B to Register A
-																	DBLE %128 $24		//0010 0011 0000 0000 1000 0000
-
-		0101	Pointer 	A 	-> B 	Register (6  bit, 6  bit)	DBLE 				//0010 1AAA AAA0 0000 00BB BBBB --Saves Double from Pointer A to Register B
-																	DBLE ^6 $24			//0010 1000 1100 0000 0001 1000
+		0101 Pointer 	A 	-> B 	Register (6  bit, 6  bit)	DBYT 				//0010 1AAA AAA0 0000 0000 0000 00BB BBBB --Saves DBYT from Pointer A to Register B
+																DBYT ^6 $24			//0010 1000 1100 0000 0000 0000 0001 1000 --Saves DBYT from Pointer 6 to Register 24
 		//--------------------------------------------------------------------------------------------------------------------------------
 		//
-		0110	Register 	A 	-> B 	Address  (6  bit, 21 bit) 	WORD 				//0011 0AAA AAAB BBBB BBBB BBBB --Saves Word from Register A to Address B
-																	WORD $24 $128		//0011 0011 0000 0000 1000 0000
+		0110 Register 	A 	-> B 	Address  (6  bit, 21 bit) 	QBYT 				//0011 0AAA AAAB BBBB BBBB BBBB BBBB BBBB --Saves QBYT from Register A to Address B
+																QBYT $24 $128		//0011 0011 0000 0000 0000 0000 1000 0000 --Saves QBYT from Register 24 to Address 128
+		0111 Address 	B 	-> A 	Register (21 bit, 6  bit)	QBYT 				//0011 1AAA AAAB BBBB BBBB BBBB BBBB BBBB --Saves QBYT from Address B to Register A
+																QBYT %128 $24		//0011 1011 0000 0000 0000 0000 1000 0000 --Saves QBYT from Address 128 to Register 24
 
-		0111	Address 	B 	-> A 	Register (21 bit, 6  bit)	WORD 				//0011 1AAA AAAB BBBB BBBB BBBB --Saves Word from Address B to Register A
-																	WORD %128 $24		//0011 1011 0000 0000 1000 0000
+		1000 Pointer 	A 	-> B 	Register (6  bit, 6  bit)	QBYT 				//0100 0AAA AAA0 0000 0000 0000 00BB BBBB --Saves QBYT from Pointer A to Register B
+																QBYT ^6 $24			//0100 0000 1100 0000 0000 0000 0001 1000 --Saves QBYT from Pointer 6 to Register 24
+			 PC 			-> B 	Register (6  bit, 6  bit)	QBYT 				//0100 0000 0001 CCCC CCCC CCCC CCBB BBBB --Saves PC+C to Register B
+																QBYT PC+1 $24		//0100 0000 0001 0000 0000 0000 0101 1000 --Saves PC+1 to Register 24
+			 //Notice how the 13th bit is toggled on. C represents a 14 bit signed immediate offset added to the PC.
 
-		1000	Pointer 	A 	-> B 	Register (6  bit, 6  bit)	WORD 				//0100 0AAA AAA0 0000 00BB BBBB --Saves Word from Pointer A to Register B
-																	WORD ^6 $24			//0100 0000 1100 0000 0001 1000
-
-		1001	Immediate 	B 	-> A 	Register (21 bit, 6  bit)	WORD 				//0100 1AAA AAAB BBBB BBBB BBBB --Saves 21 bits B to Register A
-																	WORD 69 $24			//0100 1011 0000 0000 0100 0101
+		1001 Immediate 	B 	-> A 	Register (21 bit, 6  bit)	QBYT 				//0100 1AAA AAAB BBBB BBBB BBBB BBBB BBBB --Saves 21 bits B to Register A
+																QBYT 69 $24			//0100 1011 0000 0000 0000 0000 0100 0101 --Saves 69 to Register 24
 		//--------------------------------------------------------------------------------------------------------------------------------
 		//
-		1010	Register 	A 	-> 		Stack 	 (6  Bit)			PUSH  				//0101 0AAA AAA0 0000 0000 0000 --Pushes Register A to Stack
-																	PUSH $24			//0101 0011 0000 0000 0000 0000
+		1010 Register 	A 	-> 		Stack 	 (6  Bit)			PUSH  				//0101 0AAA AAA0 0000 0000 0000 0000 0000 --Pushes Register A to Stack
+																PUSH $24			//0101 0011 0000 0000 0000 0000 0000 0000 --Pushes Register 24 to Stack
 
-		1011	Immediate 	A+B -> 		Stack    (27 bit)			PUSH				//0101 1AAA AAAB BBBB BBBB BBBB --Pushes 21 bit Immediate [AAA AAAB BBBB BBBB BBBB] to Stack
-																	PUSH 69
+		1011 Immediate 	C -> 		Stack    (27 bit)			PUSH				//0101 1CCC CCCC CCCC CCCC CCCC CCCC CCCC --Pushes 27 bit Immediate [CCC CCCC CCCC CCCC CCCC] to Stack
+																PUSH 69				//0101 1000 0000 0000 0000 0000 0100 0101 --Pushes 69 to Stack
 
-		1100	Pointer 	A 	-> 		Stack    (6  bit)			PUSH 				//0110 0AAA AAA0 0000 0000 0000 --Pushes Pointer A to Stack
-																	PUSH
+		1100 Pointer 	A 	-> 		Stack    (6  bit)			PUSH 				//0110 0AAA AAA0 0000 0000 0000 0000 0000 --Pushes Pointer A to Stack
+																PUSH ^6				//0110 0000 1100 0000 0000 0000 0000 0000 --Pushes Pointer 6 to Stack
 
-		1101	PC 			PC	-> 		Stack 						PUSH 				//0110 1000 0000 0000 0000 0000 --Pushes PC to Stack
-																	PUSH
+		1101 PC 		PC	-> 		Stack 						PUSH 				//0110 1CCC CCCC CCCC CCCC CCCC CCCC CCCC --Pushes PC+C to Stack
+																PUSH PC+1			//0110 1000 0000 0000 0000 0000 0000 0001 --Pushes PC+1 to Stack
 
-		1110	Stack 	 		-> A	Register (6  bit)			POP 				//0111 0AAA AAA0 0000 0000 0000 --Pushes top value in Stack to Register A
-																	POP
+		1110 Stack 	 	-> A	Register (6  bit)				POP  				//0111 0AAA AAA0 0000 0000 0000 0000 0000 --Pushes top value in Stack to Register A
+																POP  $24			//0110 0000 0000 0000 0000 0000 0000 0000 --Pushes top Value in Stack to Registeer 24
 
-		1111	Stack 			-> A	Register (6  bit)			PEEK 	 			//0111 1AAA AAA0 0000 0000 0000 --Peeks top value in Stack to Register A
-																	PEEK
+		1111 Stack 		-> A	Register (6  bit)				PEEK 	 			//0111 1AAA AAA0 0000 0000 0000 0000 0000 --Peeks top value in Stack to Register A
+																PEEK $24			//0111 1001 1000 0000 0000 0000 0000 0000 --Peeks top value in Stack to Register 24
 		//
 	//
 //
 //
 //Other Operations
-	1OOO 0000 .. 0000 0000 .. 0000 0000 .. 0000 0000
-	OOO - Operations
-		//OOO-> Permutations
-		000		NOP
-		001		EXE
-						1001 OOOO .. OIAA AAAA .. AAAJ BBBB .. BBCC CCCC
-						O - Operation
-						I - Use A as Immediate
+1OOO 0000 .. 0000 0000 .. 0000 0000 .. 0000 0000
+OOO - Operations
+	//OOO-> Permutations
+	000		NOP
+	001		EXE
+		1001 OOOO .. OIAA AAAA .. AAAJ BBBB .. BBCC CCCC
+		O - Operation
+		I - Use A as Immediate
+		A - A Data
+		J - Use B as Immediate
+		B - B Data
+		C - C Data
+		--
+		//OOOOO-> Permutations
+		0000 0	OR   [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0000 0IAA AAAA AAAJ BBBB BBCC CCCC --Logical OR
+		0000 1	NOR  [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0000 1IAA AAAA AAAJ BBBB BBCC CCCC --Logical NOR
+		0001 0	AND  [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0001 0IAA AAAA AAAJ BBBB BBCC CCCC --Logical AND
+		0001 1	NAND [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0001 1IAA AAAA AAAJ BBBB BBCC CCCC --Logical NAND
+		0010 0	XOR  [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0010 0IAA AAAA AAAJ BBBB BBCC CCCC --Logical XOR
+		0010 1	XNOR [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0010 1IAA AAAA AAAJ BBBB BBCC CCCC --Logical XNOR
+
+		0011 0	ADD  [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0011 0IAA AAAA AAAJ BBBB BBCC CCCC --Adition
+		0011 1	SUB  [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0011 1IAA AAAA AAAJ BBBB BBCC CCCC --Subtraction
+		0100 0	MUL  [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0100 0IAA AAAA AAAJ BBBB BBCC CCCC --Multiplication
+		0100 1	DIV  [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0100 1IAA AAAA AAAJ BBBB BBCC CCCC --Division
+		0101 0	MOD  [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0101 0IAA AAAA AAAJ BBBB BBCC CCCC --Modulus
+		0101 1	NEG  [A: Register/Immediate] 						 [C: Register]	//1001 0101 1IAA AAAA AAA0 0000 00CC CCCC --Negative (2s Compliment)
+		0110 0	ABS  [A: Register/Immediate] 						 [C: Register]	//1001 0110 0IAA AAAA AAA0 0000 00CC CCCC --Absolute 
+
+		0110 1	FADD [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0110 1IAA AAAA AAAJ BBBB BBCC CCCC --Fixed Point Adition
+		0111 0	FSUB [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0111 0IAA AAAA AAAJ BBBB BBCC CCCC --Fixed Point Subtraction
+		0111 1	FMUL [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 0111 1IAA AAAA AAAJ BBBB BBCC CCCC --Fixed Point Multiplication
+		1000 0	FDIV [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 1000 0IAA AAAA AAAJ BBBB BBCC CCCC --Fixed Point Division
+		1000 1	FSQT [A: Register/Immediate]						 [C: Register]	//1001 1000 1IAA AAAA AAA0 0000 00CC CCCC --Fixed Point Square Root
+		1001 0	FNEG [A: Register/Immediate]						 [C: Register]	//1001 1001 0IAA AAAA AAA0 0000 00CC CCCC --Fixed Point Negative
+		1001 1	FABS [A: Register/Immediate]						 [C: Register]	//1001 1001 1IAA AAAA AAA0 0000 00CC CCCC --Fixed Point Absolute
+
+		1010 0	LLSH [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 1010 0IAA AAAA AAAJ BBBB BBCC CCCC --Logical Left Shift
+		1010 1	LRSH [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 1010 1IAA AAAA AAAJ BBBB BBCC CCCC --Logical Right Shift
+		1011 0	ARSH [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 1011 0IAA AAAA AAAJ BBBB BBCC CCCC --Arithmatic Right Shift
+		1011 1	RLSH [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 1011 1IAA AAAA AAAJ BBBB BBCC CCCC --Rotate Left Shift
+		1100 0	RRSH [A: Register/Immediate] [B: Register/Immediate] [C: Register]	//1001 1100 0IAA AAAA AAAJ BBBB BBCC CCCC --Rotate Right Shift
+
+		1100 1	ENDN [A: Register/Immediate]						 [C: Register]	//1001 1100 1IAA AAAA AAA0 0000 00CC CCCC --Swap Endianess
+		1101 0	NBIT [A: Register/Immediate]						 [C: Register]	//1001 1101 0IAA AAAA AAA0 0000 00CC CCCC --Number of 1 bits
+		1101 1	HIG0 [A: Register/Immediate]						 [C: Register]	//1001 1101 1IAA AAAA AAA0 0000 00CC CCCC --Position of Highest 0 bit
+		1110 0	HIG1 [A: Register/Immediate]						 [C: Register]	//1001 1110 0IAA AAAA AAA0 0000 00CC CCCC --Position of Highest 1 bit
+		1110 1	LOW0 [A: Register/Immediate]						 [C: Register]	//1001 1110 1IAA AAAA AAA0 0000 00CC CCCC --Position of Lowest 0 bit
+		1111 0	LOW1 [A: Register/Immediate]						 [C: Register]	//1001 1111 0IAA AAAA AAA0 0000 00CC CCCC --Position of Lowest 1 bit
+
+		1111 1	RAND 												 [C: Register]	//1001 1111 1000 0000 0000 0000 00CC CCCC --Random 32 bit QBYT
+					
+	//
+
+
+
+
+
+
+
+
+/////////FROM HERE ON OUT THINGS MAY NOT BE FINALISED (READ THIS AS: THEY ARE NOT FINALISED)
+PS HOW THE FUCK ARE THERE SO MANY A'S IN THE ABOVE COMMANDS???'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	010		CONV
+					1010 OOOI .. AAAA AAAA .. AAAA AAAA .. AACC CCCC
+					O - Operation
+					I - Use A as Immediate
+					A - A Data
+					C - C Data
+	011		JMP
+					1011 OOOO .. 0000 0000 .. 0000 0000 .. 0000 0000
+					O - Operation
+						0 	-	1011 OOOO .. IIII IIII .. IIII IIII .. IIII IIII
+									I - Immediate
+						1,2 -	1011 OOOO .. AAAA AA00 .. 0000 0000 .. 0000 0000
+									A - A Data
+						3-8 -	1011 OOOO .. AAAA AABB .. BBBB IIII .. IIII IIII
+									A - A Data
+									B - B Data
+									I - Immediate
+	100		JMPF
+					1100 OOOO .. IIII IIII .. IIII IIII .. IIII IIII
+						I - Immediate
+					1100 1011 .. FFFF FF00 .. 0000 0000 .. 0000 0000 - CFLG
+						F - Flag to clear
+	101		MEM
+					1101 00RM .. MMMM MMMM .. MMMM MMMM .. MMMM MMMM - MEMB
+						R - Register or Immediate
+						M - Memory Offset
+					1101 01AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000 - MEML
+					1101 10AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000 - MEMU
 						A - A Data
-						J - Use B as Immediate
+						I - Use B as Immediate
 						B - B Data
-						C - C Data
-						(Some operations may use A, J and B as Immediate)
-		//
-		010		CONV
-						1010 OOOI .. AAAA AAAA .. AAAA AAAA .. AACC CCCC
-						O - Operation
-						I - Use A as Immediate
+	110		IRQ
+					1110 01 AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000
+	111		LOOP
+					1111 AAAA .. AACC CIBB .. BBBB XXXX .. XXXX ZZZZ
 						A - A Data
-						C - C Data
-		011		JMP
-						1011 OOOO .. 0000 0000 .. 0000 0000 .. 0000 0000
-						O - Operation
-							0 	-	1011 OOOO .. IIII IIII .. IIII IIII .. IIII IIII
-										I - Immediate
-							1,2 -	1011 OOOO .. AAAA AA00 .. 0000 0000 .. 0000 0000
-										A - A Data
-							3-8 -	1011 OOOO .. AAAA AABB .. BBBB IIII .. IIII IIII
-										A - A Data
-										B - B Data
-										I - Immediate
-		100		JMPF
-						1100 OOOO .. IIII IIII .. IIII IIII .. IIII IIII
-							I - Immediate
-						1100 1011 .. FFFF FF00 .. 0000 0000 .. 0000 0000 - CFLG
-							F - Flag to clear
-		101		MEM
-						1101 00RM .. MMMM MMMM .. MMMM MMMM .. MMMM MMMM - MEMB
-							R - Register or Immediate
-							M - Memory Offset
-						1101 01AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000 - MEML
-						1101 10AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000 - MEMU
-							A - A Data
-							I - Use B as Immediate
-							B - B Data
-		110		IRQ
-						1110 01 AA .. AAAA IBBB .. BBB0 0000 .. 0000 0000
-		111		LOOP
-						1111 AAAA .. AACC CIBB .. BBBB XXXX .. XXXX ZZZZ
-							A - A Data
-							C - Condition
-							I - Use B as Immediate
-							X - Jump Offset
-							Z - Modify A Offset
+						C - Condition
+						I - Use B as Immediate
+						X - Jump Offset
+						Z - Modify A Offset
 		//
 	//
 //
 //
 //Instructions
-//
-
-//EXE Operations 0-31
-	OR   [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical OR
-	NOR  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical NOR
-	AND  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical AND
-	NAND [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical NAND
-	XOR  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical XOR
-	XNOR [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical XNOR
-
-	ADD  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Adition
-	SUB  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Subtraction
-	MUL  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Multiplication
-	DIV  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Division
-	MOD  [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Modulus
-	NEG  [A: Register/Immediate]							[C:	Register]			//Negative (2s Compliment)
-	ABS  [A: Register/Immediate]							[C:	Register]			//Absolute 
-
-	FADD [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Fixed Point Adition
-	FSUB [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Fixed Point Subtraction
-	FMUL [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Fixed Point Multiplication
-	FDIV [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Fixed Point Division
-	FSQT [A: Register/Immediate]							[C:	Register]			//Fixed Point Square Root
-	FNEG [A: Register/Immediate]							[C:	Register]			//Fixed Point Negative
-	FABS [A: Register/Immediate]							[C:	Register]			//Fixed Point Absolute
-
-	LLSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical Left Shift
-	LRSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Logical Right Shift
-	ARSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Arithmatic Right Shift
-	RLSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Rotate Left Shift
-	RRSH [A: Register/Immediate]	[B:	Register/Immediate] [C:	Register]			//Rotate Right Shift
-
-	ENDN [A: Register]										[C:	Register]			//Swap Endianess (System still computes in Big Endian, but allows sending of data to Little Endian Systems)
-	NBIT [A: Register]										[C:	Register]			//Number of 1 bits
-	HIG0 [A: Register]										[C:	Register]			//Position of Highest 0 bit
-	HIG1 [A: Register]										[C:	Register]			//Position of Highest 1 bit
-	LOW0 [A: Register]										[C:	Register]			//Position of Lowest 0 bit
-	LOW1 [A: Register/Immediate]							[C:	Register]			//Position of Lowest 1 bit
-
-	RAND 													[C: Register]			//Random 32 bit Word
 //
 //CONV Operations 0-7
 	INTF [A: Register/Immediate]							[C:	Register]			//Integer to Fixed Point
